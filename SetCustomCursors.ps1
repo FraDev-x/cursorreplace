@@ -32,7 +32,7 @@ foreach ($key in $customCursors.Keys) {
     $destination = Join-Path $customCursorDir $customCursors[$key]
     Write-Host "  Downloading $url..."
     try {
-        Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
+        Invoke-WebRequest -Uri $url -OutFile $destination -Headers @{"User-Agent"="Mozilla/5.0"} -ErrorAction Stop
     }
     catch {
         Write-Host "    [Error] Failed to download $url"
@@ -73,8 +73,8 @@ function Restore-Cursors {
 
 Register-EngineEvent -SourceIdentifier Console.CancelKeyPress -Action { Restore-Cursors } | Out-Null
 
-Add-Type -AssemblyName System.Windows.Forms
-[Microsoft.Win32.SystemEvents]::SessionEnding += { Restore-Cursors }
+$sessionEndingHandler = Register-ObjectEvent -InputObject ([Microsoft.Win32.SystemEvents]) `
+    -EventName "SessionEnding" -Action { Restore-Cursors }
 
 Write-Host "The script will now keep running. When you shut down (or press Ctrl+C), the original cursors will be restored. (OFFERED BY FP)"
 Write-Host "Press Ctrl+C if you wish to terminate the script manually. (OFFERED BY FP)"
