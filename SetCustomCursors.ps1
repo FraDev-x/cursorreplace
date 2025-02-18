@@ -17,14 +17,15 @@ if (!(Test-Path $customCursorDir)) {
 $githubBaseUrl = "https://raw.githubusercontent.com/FraDev-x/cursorreplace/main"
 
 $customCursors = @{
-    "Arrow"      = "Arrow.cur"
-    "Help"       = "Help.cur"
-    "AppStarting"= "AppStarting.cur"
-    "Wait"       = "Wait.cur"
-    "Crosshair"  = "Crosshair.cur"
-    "TextSelect" = "TextSelect.cur"
-    "Hand"       = "Hand.cur"
+    "Arrow"      = "Normal Select.ani"
+    "Help"       = "Help Select.ani"
+    "AppStarting"= "Working in Background.ani"
+    "Wait"       = "Busy.ani"
+    "Crosshair"  = "Precision Select.ani"
+    "TextSelect" = "Text Select.ani"
+    "Hand"       = "Link Select.ani"
 }
+
 
 Write-Host "Downloading custom cursors... (OFFERED BY FP)"
 foreach ($key in $customCursors.Keys) {
