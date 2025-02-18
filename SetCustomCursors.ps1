@@ -1,7 +1,3 @@
-# ============================
-# SetCustomCursors.ps1
-# ============================
-
 $registryPath = "HKCU:\Control Panel\Cursors"
 $originalCursors = @{
     "Arrow"      = (Get-ItemProperty -Path $registryPath -Name Arrow).Arrow
@@ -13,16 +9,13 @@ $originalCursors = @{
     "Hand"       = (Get-ItemProperty -Path $registryPath -Name Hand).Hand
 }
 
-
 $customCursorDir = "$env:TEMP\CustomCursors"
 if (!(Test-Path $customCursorDir)) {
     New-Item -ItemType Directory -Path $customCursorDir | Out-Null
 }
 
-$githubBaseUrl = "https://github.com/FraDev-x/chroma"
+$githubBaseUrl = "https://raw.githubusercontent.com/FraDev-x/cursorreplace/main"
 
-# Map registry keys to the expected cursor filenames.
-# Ensure these filenames match what you uploaded.
 $customCursors = @{
     "Arrow"      = "Arrow.cur"
     "Help"       = "Help.cur"
@@ -46,8 +39,7 @@ foreach ($key in $customCursors.Keys) {
     }
 }
 
-# 3. Update the registry to use the downloaded custom cursors
-Write-Host "Updating registry to apply custom cursors...(OFFERED BY FP)"
+Write-Host "Updating registry to apply custom cursors... (OFFERED BY FP)"
 foreach ($key in $customCursors.Keys) {
     $cursorPath = Join-Path $customCursorDir $customCursors[$key]
     Set-ItemProperty -Path $registryPath -Name $key -Value $cursorPath
@@ -75,11 +67,9 @@ function Restore-Cursors {
     foreach ($key in $originalCursors.Keys) {
         Set-ItemProperty -Path $registryPath -Name $key -Value $originalCursors[$key]
     }
-    # Broadcast the change again to update the cursors
     [NativeMethods]::SendMessageTimeout([NativeMethods]::HWND_BROADCAST, [NativeMethods]::WM_SETTINGCHANGE, [IntPtr]::Zero, "Control Panel", 0, 100, [ref]$result)
     Write-Host "Original cursors restored."
 }
-
 
 Register-EngineEvent -SourceIdentifier Console.CancelKeyPress -Action { Restore-Cursors } | Out-Null
 
