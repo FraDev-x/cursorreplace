@@ -74,7 +74,6 @@ function Restore-Cursors {
 Register-EngineEvent -SourceIdentifier Console.CancelKeyPress -Action { Restore-Cursors } | Out-Null
 
 Add-Type -AssemblyName System.Windows.Forms
-[Microsoft.Win32.SystemEvents]::SessionEnding += { Restore-Cursors }
 
 Write-Host "The script will now keep running. When you shut down (or press Ctrl+C), the original cursors will be restored. (OFFERED BY FP)"
 Write-Host "Press Ctrl+C if you wish to terminate the script manually. (OFFERED BY FP)"
