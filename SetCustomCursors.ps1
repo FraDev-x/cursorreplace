@@ -47,17 +47,21 @@ foreach ($key in $customCursors.Keys) {
 }
 Write-Host "Custom cursors downloaded."
 
-Write-Host "Updating registry with custom cursor paths..."
-foreach ($key in $customCursors.Keys) {
-    $cursorPath = Join-Path $customCursorDir $customCursors[$key]
-    Write-Host "Setting $key to $cursorPath..."
-    Set-ItemProperty -Path $registryPath -Name $key -Value $cursorPath
+Write-Host "Compiling required native methods..."
+$cursorUpdaterCode = @"
+using System;
+using System.Runtime.InteropServices;
+public class CursorUpdater {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+    public const uint SPI_SETCURSORS = 0x0057;
+    public const uint SPIF_UPDATEINIFILE = 0x01;
+    public const uint SPIF_SENDCHANGE = 0x02;
 }
+"@
+Add-Type $cursorUpdaterCode
 
-Set-ItemProperty -Path $registryPath -Name "Scheme Source" -Value 2
-Write-Host "Registry updated with custom cursor paths."
-   
-$code = @'
+$registryUtilsCode = @'
 using System;
 using System.Runtime.InteropServices;
 
@@ -72,7 +76,16 @@ public class RegistryUtils {
     public const int WM_SETTINGCHANGE = 0x001A;
 }
 '@
-Add-Type -TypeDefinition $code
+Add-Type -TypeDefinition $registryUtilsCode
+
+Write-Host "Updating registry with custom cursor paths..."
+foreach ($key in $customCursors.Keys) {
+    $cursorPath = Join-Path $customCursorDir $customCursors[$key]
+    Write-Host "Setting $key to $cursorPath..."
+    Set-ItemProperty -Path $registryPath -Name $key -Value $cursorPath
+}
+Set-ItemProperty -Path $registryPath -Name "Scheme Source" -Value 2
+Write-Host "Registry updated with custom cursor paths."
 
 Write-Host "Broadcasting settings change..."
 $HWND_BROADCAST = [IntPtr]::new(-1)
@@ -83,20 +96,6 @@ Write-Host "Applying cursor changes..."
     [CursorUpdater]::SystemParametersInfo([CursorUpdater]::SPI_SETCURSORS, 0, [IntPtr]::Zero, [CursorUpdater]::SPIF_UPDATEINIFILE -bor [CursorUpdater]::SPIF_SENDCHANGE)
     Start-Sleep -Milliseconds 1000
 }
-
-Write-Host "Compiling native method for broadcasting settings change..."
-$code = @"
-using System;
-using System.Runtime.InteropServices;
-public class CursorUpdater {
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
-    public const uint SPI_SETCURSORS = 0x0057;
-    public const uint SPIF_UPDATEINIFILE = 0x01;
-    public const uint SPIF_SENDCHANGE = 0x02;
-}
-"@
-Add-Type $code
 
 Write-Host "Registering event for restoring original cursors on exit..."
 function Restore-Cursors {
