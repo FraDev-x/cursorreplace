@@ -28,7 +28,7 @@ $customCursors = @{
 
 Write-Host "Downloading custom cursors... (OFFERED BY FP)"
 foreach ($key in $customCursors.Keys) {
-    $url = "$githubBaseUrl/$(($customCursors[$key]) -replace ' ', '%20'))"
+    $url = "$githubBaseUrl/$(($customCursors[$key]) -replace ' ', '%20')"
     $destination = Join-Path $customCursorDir $customCursors[$key]
     Write-Host "  Downloading $url..."
     try {
