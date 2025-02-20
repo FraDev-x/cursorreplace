@@ -52,12 +52,39 @@ foreach ($key in $customCursors.Keys) {
     $cursorPath = Join-Path $customCursorDir $customCursors[$key]
     Write-Host "Setting $key to $cursorPath..."
     Set-ItemProperty -Path $registryPath -Name $key -Value $cursorPath
-    Set-ItemProperty -Path $registryPath -Name "Scheme Source" -Value 2
 }
+
+Set-ItemProperty -Path $registryPath -Name "Scheme Source" -Value 2
 Write-Host "Registry updated with custom cursor paths."
+   
+$code = @'
+using System;
+using System.Runtime.InteropServices;
 
-Write-Host "Forcing system to update cursor settings..."
+public class RegistryUtils {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    
+    [DllImport("user32.dll", SetLastError=true)]
+    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    
+    public const int HWND_BROADCAST = 0xffff;
+    public const int WM_SETTINGCHANGE = 0x001A;
+}
+'@
+Add-Type -TypeDefinition $code
 
+Write-Host "Broadcasting settings change..."
+$HWND_BROADCAST = [IntPtr]::new(-1)
+[RegistryUtils]::SendMessage($HWND_BROADCAST, [RegistryUtils]::WM_SETTINGCHANGE, [IntPtr]::Zero, [IntPtr]::Zero)
+
+Write-Host "Applying cursor changes..."
+1..5 | ForEach-Object {
+    [CursorUpdater]::SystemParametersInfo([CursorUpdater]::SPI_SETCURSORS, 0, [IntPtr]::Zero, [CursorUpdater]::SPIF_UPDATEINIFILE -bor [CursorUpdater]::SPIF_SENDCHANGE)
+    Start-Sleep -Milliseconds 1000
+}
+
+Write-Host "Compiling native method for broadcasting settings change..."
 $code = @"
 using System;
 using System.Runtime.InteropServices;
@@ -70,32 +97,6 @@ public class CursorUpdater {
 }
 "@
 Add-Type $code
-
-Write-Host "Applying cursor changes..."
-1..3 | ForEach-Object {
-    [CursorUpdater]::SystemParametersInfo([CursorUpdater]::SPI_SETCURSORS, 0, [IntPtr]::Zero, [CursorUpdater]::SPIF_UPDATEINIFILE -bor [CursorUpdater]::SPIF_SENDCHANGE)
-    Start-Sleep -Milliseconds 500
-}
-Write-Host "Cursor settings updated."
-
-Write-Host "Compiling native method for broadcasting settings change..."
-$code = @"
-using System;
-using System.Runtime.InteropServices;
-public class NativeMethods {
-    public const int WM_SETTINGCHANGE = 0x1A;
-    public static IntPtr HWND_BROADCAST = new IntPtr(0xffff);
-    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-    public static extern IntPtr SendMessageTimeout(IntPtr hWnd, int Msg, IntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
-}
-"@
-Add-Type $code
-
-[IntPtr]$result = [IntPtr]::Zero
-Write-Host "Broadcasting WM_SETTINGCHANGE message..."
-[NativeMethods]::SendMessageTimeout([NativeMethods]::HWND_BROADCAST, [NativeMethods]::WM_SETTINGCHANGE, [IntPtr]::Zero, "Control Panel", 0, 100, [ref]$result)
-Write-Host "WM_SETTINGCHANGE broadcast sent."
-Write-Host "Custom cursors applied successfully."
 
 Write-Host "Registering event for restoring original cursors on exit..."
 function Restore-Cursors {
