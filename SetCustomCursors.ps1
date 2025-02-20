@@ -45,6 +45,8 @@ foreach ($key in $customCursors.Keys) {
     Set-ItemProperty -Path $registryPath -Name $key -Value $cursorPath
 }
 
+Start-Process -FilePath "rundll32.exe" -ArgumentList "user32.dll,UpdatePerUserSystemParameters" -NoNewWindow -Wait
+
 $code = @"
 using System;
 using System.Runtime.InteropServices;
