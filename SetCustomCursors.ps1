@@ -57,11 +57,26 @@ foreach ($key in $customCursors.Keys) {
 Write-Host "Registry updated with custom cursor paths."
 
 Write-Host "Forcing system to update cursor settings..."
+
+$code = @"
+using System;
+using System.Runtime.InteropServices;
+public class CursorUpdater {
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, IntPtr pvParam, uint fWinIni);
+    public const uint SPI_SETCURSORS = 0x0057;
+    public const uint SPIF_UPDATEINIFILE = 0x01;
+    public const uint SPIF_SENDCHANGE = 0x02;
+}
+"@
+Add-Type $code
+
+Write-Host "Applying cursor changes..."
 1..3 | ForEach-Object {
-    Start-Process -FilePath "rundll32.exe" -ArgumentList "user32.dll,UpdatePerUserSystemParameters" -NoNewWindow -Wait
+    [CursorUpdater]::SystemParametersInfo([CursorUpdater]::SPI_SETCURSORS, 0, [IntPtr]::Zero, [CursorUpdater]::SPIF_UPDATEINIFILE -bor [CursorUpdater]::SPIF_SENDCHANGE)
     Start-Sleep -Milliseconds 500
 }
-Write-Host "System parameters updated via rundll32."
+Write-Host "Cursor settings updated."
 
 Write-Host "Compiling native method for broadcasting settings change..."
 $code = @"
@@ -91,7 +106,7 @@ function Restore-Cursors {
     }
     Set-ItemProperty -Path $registryPath -Name "Scheme Source" -Value 2
     1..3 | ForEach-Object {
-        Start-Process -FilePath "rundll32.exe" -ArgumentList "user32.dll,UpdatePerUserSystemParameters" -NoNewWindow -Wait
+        [CursorUpdater]::SystemParametersInfo([CursorUpdater]::SPI_SETCURSORS, 0, [IntPtr]::Zero, [CursorUpdater]::SPIF_UPDATEINIFILE -bor [CursorUpdater]::SPIF_SENDCHANGE)
         Start-Sleep -Milliseconds 500
     }
     [NativeMethods]::SendMessageTimeout([NativeMethods]::HWND_BROADCAST, [NativeMethods]::WM_SETTINGCHANGE, [IntPtr]::Zero, "Control Panel", 0, 100, [ref]$result)
